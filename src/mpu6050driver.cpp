@@ -42,20 +42,43 @@ void MPU6050Driver::handleInput()
   auto message = sensor_msgs::msg::Imu();
   message.header.stamp = this->get_clock()->now();
   message.header.frame_id = "base_link";
+
+  // Get raw sensor data
+  double ax = mpu6050_->getAccelerationX();
+  double ay = mpu6050_->getAccelerationY();
+  double az = mpu6050_->getAccelerationZ();
+  message.linear_acceleration.x = ax;
+  message.linear_acceleration.y = ay;
+  message.linear_acceleration.z = az;
   message.linear_acceleration_covariance = {0};
-  message.linear_acceleration.x = mpu6050_->getAccelerationX();
-  message.linear_acceleration.y = mpu6050_->getAccelerationY();
-  message.linear_acceleration.z = mpu6050_->getAccelerationZ();
-  message.angular_velocity_covariance[0] = {0};
+
   message.angular_velocity.x = mpu6050_->getAngularVelocityX();
   message.angular_velocity.y = mpu6050_->getAngularVelocityY();
   message.angular_velocity.z = mpu6050_->getAngularVelocityZ();
-  // Invalidate quaternion
-  message.orientation_covariance[0] = -1;
-  message.orientation.x = 0;
-  message.orientation.y = 0;
-  message.orientation.z = 0;
-  message.orientation.w = 0;
+  message.angular_velocity_covariance[0] = 0;
+
+  // Estimate orientation (roll and pitch) from the accelerometer
+  double roll = atan2(ay, az);
+  double pitch = atan2(-ax, sqrt(ay * ay + az * az));
+  double yaw = 0.0;  // Yaw remains unknown without a magnetometer
+
+  // Convert Euler angles to quaternion
+  double cy = cos(yaw * 0.5);
+  double sy = sin(yaw * 0.5);
+  double cp = cos(pitch * 0.5);
+  double sp = sin(pitch * 0.5);
+  double cr = cos(roll * 0.5);
+  double sr = sin(roll * 0.5);
+
+  message.orientation.w = cr * cp * cy + sr * sp * sy;
+  message.orientation.x = sr * cp * cy - cr * sp * sy;
+  message.orientation.y = cr * sp * cy + sr * cp * sy;
+  message.orientation.z = cr * cp * sy - sr * sp * cy;
+
+  // Optionally update covariance values if available
+  // Here covariance is set to a default style:
+  message.orientation_covariance = {0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01};
+
   publisher_->publish(message);
 }
 
