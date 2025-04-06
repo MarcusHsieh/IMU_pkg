@@ -6,7 +6,7 @@
 
 class MPU6050Sensor {
  public:
-  MPU6050Sensor(int bus_number = 1);
+  MPU6050Sensor(int bus_number = 0);
   ~MPU6050Sensor();
 
   enum AccelRange { ACC_2_G, ACC_4_G, ACC_8_G, ACC_16_G };
